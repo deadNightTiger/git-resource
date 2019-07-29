@@ -622,8 +622,9 @@ it_can_get_returned_ref() {
   local ref2=$(make_annotated_tag $repo "1.0-staging" "other tag")
   local ref3=$(make_annotated_tag $repo "0.9-production" "a tag")
   local ref4=$(make_commit $repo)
-  local ref5=$(make_annotated_tag $repo "1.1-staging" "another tag")
-  local ref6=$(make_commit $repo)
+  local ref5=$(make_commit $repo)
+  local ref6=$(make_annotated_tag $repo "1.1-staging" "another tag")
+  local ref7=$(make_commit $repo)
 
   get_uri_at_ref $repo $ref1 $TMPDIR/destination | jq -e "
     .version == {ref: $(echo $ref1 | jq -R .)}
@@ -648,14 +649,34 @@ it_can_get_returned_ref() {
   test "$(cat $dest/.git/ref)" = "${ref3}" || \
     ( echo ".git/ref does not match. Expected '${ref3}', got '$(cat $dest/.git/ref)'"; return 1 )
 
-  test -e $dest/.git/tag_ref || ( echo ".git/tag_ref does not exist."; return 1 )
-  test "$(cat $dest/.git/tag_ref)" = "${ref3}" || \
-    ( echo ".git/tag_ref does not match. Expected '${ref3}', got '$(cat $dest/.git/tag_ref)'"; return 1 )
-
   test -e $dest/.git/short_ref || ( echo ".git/short_ref does not exist."; return 1 )
   local expected_short_ref="test-$(echo ${ref3} | cut -c1-7)"
   test "$(cat $dest/.git/short_ref)" = $expected_short_ref || \
     ( echo ".git/short_ref does not match. Expected '${expected_short_ref}', got '$(cat $dest/.git/short_ref)'"; return 1 )
+
+  test -e $dest/.git/tag_ref || ( echo ".git/tag_ref does not exist."; return 1 )
+  cat $dest/.git/tag_ref
+  test "$(cat $dest/.git/tag_ref)" = "${ref3}" || \
+    ( echo ".git/tag_ref does not match. Expected '${ref3}', got '$(cat $dest/.git/tag_ref)'"; return 1 )
+
+  rm -rf $TMPDIR/destination
+  get_uri_at_ref $repo $ref7 $TMPDIR/destination | jq -e "
+    .version == {ref: $(echo $ref7 | jq -R .)}
+  "
+  test -e $dest/.git/tag_ref || ( echo ".git/tag_ref does not exist."; return 1 )
+  local expected_tag_ref="${ref6}-1-g$(echo ${ref7} | cut -c1-7)"
+  test "$(cat $dest/.git/tag_ref)" = $expected_tag_ref || \
+    ( echo ".git/tag_ref does not match. Expected '${expected_tag_ref}', got '$(cat $dest/.git/tag_ref)'"; return 1 )
+
+  rm -rf $TMPDIR/destination
+  get_uri_at_ref $repo $ref4 $TMPDIR/destination | jq -e "
+    .version == {ref: $(echo $ref4 | jq -R .)}
+  "
+  test -e $dest/.git/tag_ref || ( echo ".git/tag_ref does not exist."; return 1 )
+  local expected_tag_ref="${ref3}-1-g$(echo ${ref4} | cut -c1-7)"
+  test "$(cat $dest/.git/tag_ref)" = $expected_tag_ref || \
+    ( echo ".git/tag_ref does not match. Expected '${expected_tag_ref}', got '$(cat $dest/.git/tag_ref)'"; return 1 )
+
 }
 
 it_can_get_commit_message() {
